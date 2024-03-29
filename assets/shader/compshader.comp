@@ -1,0 +1,51 @@
+#version 450
+#include "common.h"
+
+struct VData
+{
+    vec3 pos;
+    uint color;
+};
+
+layout (set = 0, binding = 0, MATRIX_ORDER) restrict writeonly buffer VertexDataBuffer
+{
+    VData vData[];
+} vertData;
+
+layout (set = 0, binding = 1, MATRIX_ORDER) uniform UniformBuffer
+{
+    uint totalTimeMs;
+    float deltaTime;
+    vec2 padding1;
+
+    vec4 padding2;
+    vec4 padding3;
+    vec4 padding4;
+
+    mat4x4 padding5;
+    mat4x4 padding6;
+    mat4x4 padding7;
+} UniData;
+
+
+layout (local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+void main()
+{
+    uint indexInThreadGroup = gl_LocalInvocationID.x;
+    uint groupThreadIndex = gl_WorkGroupID.x;
+    uint globalIndex = gl_GlobalInvocationID.x;
+
+    if(globalIndex < 3)
+    {
+        uint col = 255 << 24;
+        col |= 255u << (globalIndex * 8u);
+        float tms = UniData.totalTimeMs / 1000.0f;
+        float angle = globalIndex / 3.0 * 3.14159 * 2.0 + tms * 0.001;
+        float s = sin(angle) * 0.125;
+        float c = cos(angle) * 0.125;
+        vec3 pos = vec3(0.875 + c, 0.875 + s, 0.0);
+        vertData.vData[globalIndex + 3].color = col;
+        vertData.vData[globalIndex + 3].pos = pos;
+    }
+}

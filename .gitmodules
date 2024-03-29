@@ -1,0 +1,6 @@
+[submodule "external/carpvk"]
+	path = external/carpvk
+	url = https://github.com/Kiraffi/carpvk.git
+[submodule "external/SDL"]
+	path = external/SDL
+	url = https://github.com/libsdl-org/SDL.git

@@ -12,7 +12,7 @@ static MyMemory* sMyMemory = nullptr;
 bool initMemory()
 {
     sMyMemory = new MyMemory;
-    sMyMemory->initialized = true;
+    sMyMemory->m_initialized = true;
     return true;
 }
 

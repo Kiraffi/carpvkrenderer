@@ -7,6 +7,6 @@
 
 ## Uses
 - carpvk
--- Vulkan Memomry Allocator
-- SDL3
+  - Vulkan Memomry Allocator
+- GLFW
 

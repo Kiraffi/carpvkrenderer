@@ -40,7 +40,7 @@ void main()
     {
         uint col = 255 << 24;
         col |= 255u << (globalIndex * 8u);
-        float tms = UniData.totalTimeMs / 1000.0f;
+        float tms = UniData.totalTimeMs;
         float angle = globalIndex / 3.0 * 3.14159 * 2.0 + tms * 0.001;
         float s = sin(angle) * 0.125;
         float c = cos(angle) * 0.125;

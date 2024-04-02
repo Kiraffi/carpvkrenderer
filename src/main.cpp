@@ -1,11 +1,9 @@
 #include <vulkan/vulkan_core.h>
-//#include <volk.h>
 #include <stdio.h>
 
 #include <carpvk.h>
 
-#include <SDL3/SDL.h>
-#include "SDL_vulkan.h"
+#include <GLFW/glfw3.h>
 
 #include <vector>
 #include <fstream>
@@ -54,8 +52,7 @@ static DescriptorSetLayout sGraphicsDescriptorLayouts[] =
 
 struct State
 {
-    SDL_Window* m_window = nullptr;
-
+    GLFWwindow* m_window = nullptr;
     VkDescriptorSetLayout m_descriptorSetLayout = {};
 
     VkPipelineLayout m_graphicsPipelineLayout = {};
@@ -75,9 +72,19 @@ struct State
     Image m_sampledImage = {};
 
     VkSampler m_sampler = {};
-    uint64_t m_ticksAtStart = {};
+    double m_ticksAtStart = {};
+    //uint64_t m_ticksAtStart = {};
 };
 
+
+void sSleepMs(double time)
+{
+#ifdef WIN32
+    Sleep((DWORD)(time));
+#else
+    usleep((useconds_t)(time*1000)); // unistd.h
+#endif
+}
 
 
 static void sDeinitShaders(void* userData)
@@ -102,8 +109,9 @@ static void sDeinitShaders(void* userData)
 
 static void sGetWindowSize(int32_t* widthOut, int32_t* heightOut, void* userData)
 {
-    State* state = (State*) userData;
-    SDL_GetWindowSize(state->m_window, widthOut, heightOut);
+    const State* state = (State*) userData;
+
+    glfwGetFramebufferSize(state->m_window, widthOut, heightOut);
 }
 
 static bool sUpdateRenderTargetDescriptorSets(State& state)
@@ -177,12 +185,8 @@ static VkSurfaceKHR sCreateSurface(VkInstance instance, void* userData)
 {
     State* state = (State*)userData;
     VkSurfaceKHR surface;
-    if(SDL_Vulkan_CreateSurface(state->m_window, getVkInstance(), nullptr, &surface) == SDL_FALSE)
-    {
-        printf("Failed to create surface\n");
-        return {};
-    }
-    if(!surface)
+    VkResult err = glfwCreateWindowSurface(instance, state->m_window, nullptr, &surface);
+    if(err || !surface)
     {
         printf("Failed to create surface\n");
         return {};
@@ -204,10 +208,10 @@ static bool sDraw(State& state)
             uint32_t padding[63];
         };
 
-        UpdateStruct data = {
-            .totalTimeMs = uint32_t((SDL_GetTicksNS() - state.m_ticksAtStart) / 1000),
-        };
 
+        UpdateStruct data = {
+            .totalTimeMs = uint32_t((glfwGetTime() - state.m_ticksAtStart) * 1'000),
+        };
         uploadToUniformBuffer(state.m_uniformBuffer, &data, sizeof(UpdateStruct));
 
         bufferBarrier(state.m_modelVerticesBuffer,
@@ -318,11 +322,22 @@ static uint32_t sGetColor(float r, float g, float b, float a)
 }
 
 
+static const char* const* sGetExtensions(uint32_t* outCount)
+{
+    return glfwGetRequiredInstanceExtensions(outCount);
+}
+
+static void sKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+}
 
 
-
-
-
+static void sErrorCB(int32_t error, const char* description)
+{
+    printf("Error: %s\n", description);
+}
 
 
 
@@ -334,22 +349,23 @@ static uint32_t sGetColor(float r, float g, float b, float a)
 /////////
 static int sRun(State &state)
 {
-    // Create window
-    SDL_Init(SDL_INIT_VIDEO);              // Initialize SDL3
+    if (!glfwInit())
+    {
+        printf("Failed to initialize glfw\n");
+        return -1;
+    }
+    glfwSetErrorCallback(sErrorCB);
 
-    // Create an application window with the following settings:
-    state.m_window = SDL_CreateWindow(
-        "An SDL3 window",
-        SCREEN_WIDTH,
-        SCREEN_HEIGHT,
-        SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE
-    );
+
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    state.m_window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "GLFW Window", nullptr, nullptr);
 
     // Check that the window was successfully created
-    if (state.m_window == NULL)
+    if (state.m_window == nullptr)
     {
-        // In the case that the window could not be made...
-        printf("Could not create window: %s\n", SDL_GetError());
+        const char* error;
+        glfwGetError(&error);
+        printf("Could not create glfw window: %s\n", error);
         return false;
     }
     static const char *extensions[] =
@@ -361,7 +377,7 @@ static int sRun(State &state)
     sGetWindowSize(&width, &height, &state);
 
     VulkanInstanceParams vkInstanceParams = {
-        .getExtraExtensionsFn = SDL_Vulkan_GetInstanceExtensions,
+        .getExtraExtensionsFn = sGetExtensions,
         .createSurfaceFn = sCreateSurface,
         .destroyBuffersFn = sDeinitShaders,
         .getWindowSizeFn = sGetWindowSize,
@@ -546,37 +562,19 @@ static int sRun(State &state)
         return 2;
     }
 
+    glfwSetKeyCallback(state.m_window, sKeyCallback);
+
+
 
     char tmpBuf[256] = {};
     int updateTick = 0;
-    uint64_t lastTicks = SDL_GetTicksNS();
+    double lastTicks = glfwGetTime();
     state.m_ticksAtStart = lastTicks;
     bool quit = false;
     //While application is running
-    while( !quit )
+    while( !quit && !glfwWindowShouldClose(state.m_window))
     {
-        //Event handler
-        SDL_Event e;
-
-        //Handle events on queue
-        while (SDL_PollEvent(&e) != 0)
-        {
-            switch (e.type)
-            {
-                case SDL_EVENT_KEY_DOWN:
-                    if (e.key.keysym.sym == SDLK_ESCAPE)
-                    {
-                        quit = true;
-                    }
-                    break;
-                case SDL_EVENT_QUIT:
-                    quit = true;
-                    break;
-                default:
-                    break;
-            }
-        }
-
+        glfwPollEvents();
         beginFrame();
 
         sDraw(state);
@@ -585,20 +583,18 @@ static int sRun(State &state)
         static int MaxTicks = 100;
         if(++updateTick >= MaxTicks)
         {
-            uint64_t newTicks = SDL_GetTicksNS();
+            double newTicks = glfwGetTime();
             double diff = newTicks - lastTicks;
             diff = diff > 0 ? diff / MaxTicks : 1;
             lastTicks = newTicks;
 
-            SDL_snprintf(tmpBuf, 255, "FPS: %f - %fms", 1'000'000'000.0 / diff, diff / 1'000'000.0);
-
-            SDL_SetWindowTitle(state.m_window, tmpBuf);
+            snprintf(tmpBuf, 255, "FPS: %f - %fms", 1.0 / diff, diff / 1.0);
+            glfwSetWindowTitle(state.m_window, tmpBuf);
             updateTick = 0;
         }
-        SDL_Delay(1);
+        sSleepMs(1);
     }
 
-    // The window is open: could enter program loop here (see SDL_PollEvent())
     printf("success\n");
     return 0;
 }
@@ -612,11 +608,8 @@ int main()
 
     deinitVulkan();
 
-    // Close and destroy the window
-    SDL_DestroyWindow(state.m_window);
-
-    // Clean up
-    SDL_Quit();
+    glfwDestroyWindow(state.m_window);
+    glfwTerminate();
 
     return returnValue;
 }

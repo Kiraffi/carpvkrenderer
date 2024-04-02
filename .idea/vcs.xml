@@ -2,8 +2,8 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/external/SDL" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/external/carpvk" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/external/carpvk/external/VulkanMemoryAllocator" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/glfw" vcs="Git" />
   </component>
 </project>

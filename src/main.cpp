@@ -1,3 +1,7 @@
+#ifdef WIN32
+    #include <windows.h>
+#endif
+
 #include <vulkan/vulkan_core.h>
 #include <stdio.h>
 
@@ -9,6 +13,7 @@
 #include <fstream>
 
 #include "mymemory.h"
+
 
 static const int SCREEN_WIDTH = 1024;
 static const int SCREEN_HEIGHT = 768;

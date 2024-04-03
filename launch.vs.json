@@ -5,8 +5,8 @@
     {
         "type": "default",
         "project": "CMakeLists.txt",
-        "projectTarget": "carpvktriangle.exe",
-        "name": "carpvktriangle.exe",
+        "projectTarget": "carpvkrenderer.exe",
+        "name": "carpvkrenderer.exe",
         "currentDir": "${workspaceRoot}"
     }
   ]
